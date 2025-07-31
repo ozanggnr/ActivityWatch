@@ -1,5 +1,7 @@
 package com.ozang.myfitnessozzy
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -17,11 +19,36 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import com.ozang.myfitnessozzy.permissions.PermissionUtils
 import kotlinx.coroutines.delay
+import androidx.core.net.toUri
 
 class MainActivity : ComponentActivity() {
 
+    private fun isHealthConnectInstalled(): Boolean {
+        return try {
+            packageManager.getPackageInfo("com.google.android.apps.healthdata", 0)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun redirectToHealthConnectPlayStore() {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                data =
+                    "https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata".toUri()
+                setPackage("com.android.vending")
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Play Store açılamadı", e)
+            Toast.makeText(this, "Play Store açılamadı", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
     private lateinit var healthConnectClient: HealthConnectClient
-    private val homeViewModel: HomeViewModel by viewModels()
+    val homeViewModel: HomeViewModel by viewModels()
 
     private val permissionLauncher = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
@@ -43,17 +70,21 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val healthConnectClient = HealthConnectClient.getOrCreate(this)
+        homeViewModel.setHealthClient(healthConnectClient)
+
         try {
             // Health Connect Check
             val availabilityStatus = HealthConnectClient.getSdkStatus(this)
             Log.d("MainActivity", "Health Connect status: $availabilityStatus")
 
-            if (availabilityStatus == HealthConnectClient.SDK_UNAVAILABLE) {
-                Toast.makeText(this, "Health Connect mevcut değil", Toast.LENGTH_LONG).show()
+            if (availabilityStatus == HealthConnectClient.SDK_UNAVAILABLE && !isHealthConnectInstalled()) {
+                Toast.makeText(this, "Health Connect yüklü değil, Play Store'a yönlendiriliyorsunuz.", Toast.LENGTH_LONG).show()
+                redirectToHealthConnectPlayStore()
                 return
             }
 
-            healthConnectClient = HealthConnectClient.getOrCreate(this)
+            this@MainActivity.healthConnectClient = HealthConnectClient.getOrCreate(this)
 
             setContent {
                 MyFitnessOzzyTheme {
@@ -123,20 +154,17 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(Unit) {
                         try {
-
                             delay(500)
 
-                            val granted = healthConnectClient.permissionController.getGrantedPermissions()
                             val allPermissions = PermissionUtils.getAllPermissions()
+                            val granted = homeViewModel.getGrantedPermissions()
                             val missing = allPermissions.filterNot { granted.contains(it) }.toSet()
 
                             Log.d("MainActivity", "Granted permissions: $granted")
                             Log.d("MainActivity", "Missing permissions: $missing")
 
-                            // Permission refreshi
                             homeViewModel.refreshPermissions()
 
-                            // Eksik varsa sor
                             if (missing.isNotEmpty()) {
                                 Log.d("MainActivity", "Requesting missing permissions: $missing")
                                 delay(1000)

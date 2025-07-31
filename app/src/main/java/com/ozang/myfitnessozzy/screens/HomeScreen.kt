@@ -12,9 +12,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import com.ozang.myfitnessozzy.permissions.PermissionUtils
 import com.ozang.myfitnessozzy.viewmodel.HomeViewModel
+import androidx.core.content.edit
 
 
 @Composable
@@ -51,7 +51,7 @@ fun HomeScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    prefs.edit().putBoolean("shownHealthDialog", true).apply()
+                    prefs.edit { putBoolean("shownHealthDialog", true) }
                     hasShownDialog = true
                     showInitialDialog = false
                     onRequestPermissions(PermissionUtils.getAllPermissions())
@@ -61,7 +61,7 @@ fun HomeScreen(
             },
             dismissButton = {
                 TextButton(onClick = {
-                    prefs.edit().putBoolean("shownHealthDialog", true).apply()
+                    prefs.edit { putBoolean("shownHealthDialog", true) }
                     hasShownDialog = true
                     showInitialDialog = false
                 }) {
