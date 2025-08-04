@@ -1,6 +1,7 @@
 package com.ozang.myfitnessozzy.screens
 
 import android.content.Context
+import android.view.ViewGroup
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
@@ -28,15 +29,11 @@ fun HomeScreen(
 ) {
 
 
-    val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("prefs", Context.MODE_PRIVATE) }
-
         val stepGranted by homeViewModel.stepPermissionGranted.collectAsState()
     val cyclingGranted by homeViewModel.cyclingPermissionGranted.collectAsState()
     val caloriesGranted by homeViewModel.caloriesPermissionGranted.collectAsState()
 
-    val hasAnyPermissions = stepGranted || cyclingGranted || caloriesGranted
-    val allPermissionsGranted = stepGranted && cyclingGranted && caloriesGranted
+
     
     Column(
         modifier = Modifier
@@ -97,6 +94,7 @@ fun PermissionButton(
 ) {
     Button(
         onClick = {
+
             if (enabled) {
                 onClick()
             } else {

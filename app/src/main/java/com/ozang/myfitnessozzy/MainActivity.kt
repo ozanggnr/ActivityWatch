@@ -7,7 +7,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -16,8 +15,6 @@ import com.ozang.myfitnessozzy.ui.theme.MyFitnessOzzyTheme
 import com.ozang.myfitnessozzy.viewmodel.HomeViewModel
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
-
-import kotlinx.coroutines.delay
 import androidx.core.net.toUri
 import com.ozang.myfitnessozzy.permissions.PermissionUtils
 
@@ -82,7 +79,7 @@ class MainActivity : ComponentActivity() {
 
             when (sdkStatus) {
                 HealthConnectClient.SDK_AVAILABLE -> {
-                    // This shouldn't happen, but just in case
+
                     Log.w("MainActivity", "SDK is available but client is null")
                     return
                 }
