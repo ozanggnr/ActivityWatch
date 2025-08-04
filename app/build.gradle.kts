@@ -41,8 +41,6 @@ android {
 
 dependencies {
 
-    implementation("androidx.health.connect:connect-client:1.1.0-alpha06")
-
     implementation(libs.androidx.material.icons.extended.v140)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
@@ -58,9 +56,11 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.runtime.livedata)
 
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
 
     debugImplementation(libs.androidx.ui.tooling)
