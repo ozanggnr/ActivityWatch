@@ -1,7 +1,6 @@
 package com.ozang.myfitnessozzy
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -17,18 +16,50 @@ import com.ozang.myfitnessozzy.ui.theme.MyFitnessOzzyTheme
 import com.ozang.myfitnessozzy.viewmodel.HomeViewModel
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
-import com.ozang.myfitnessozzy.permissions.PermissionUtils
+
 import kotlinx.coroutines.delay
 import androidx.core.net.toUri
+import com.ozang.myfitnessozzy.permissions.PermissionUtils
 
 class MainActivity : ComponentActivity() {
 
-    private fun isHealthConnectInstalled(): Boolean {
-        return try {
-            packageManager.getPackageInfo("com.google.android.apps.healthdata", 0)
-            true
+    private var healthConnectClient: HealthConnectClient? = null
+    private var isHealthConnectAvailable = false
+    val homeViewModel: HomeViewModel by viewModels()
+
+    private val permissionLauncher = registerForActivityResult(
+        PermissionController.createRequestPermissionResultContract()
+    ) { grantedPermissions: Set<String> ->
+        homeViewModel.refreshPermissions()
+    }
+
+    private fun initializeHealthConnect() {
+        try {
+            val sdkStatus = HealthConnectClient.getSdkStatus(this)
+
+            when (sdkStatus) {
+                HealthConnectClient.SDK_AVAILABLE -> {
+                    healthConnectClient = HealthConnectClient.getOrCreate(this)
+                    homeViewModel.setHealthClient(healthConnectClient!!)
+                    isHealthConnectAvailable = true
+                }
+
+                HealthConnectClient.SDK_UNAVAILABLE -> {
+                    isHealthConnectAvailable = false
+                    Toast.makeText(
+                        this,
+                        "Bu cihaz Health Connect'i desteklemiyor",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+
+                HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
+                    isHealthConnectAvailable = false
+                    redirectToHealthConnectPlayStore()
+                }
+            }
         } catch (e: Exception) {
-            false
+            isHealthConnectAvailable = false
         }
     }
 
@@ -41,154 +72,110 @@ class MainActivity : ComponentActivity() {
             }
             startActivity(intent)
         } catch (e: Exception) {
-            Log.e("MainActivity", "Play Store açılamadı", e)
-            Toast.makeText(this, "Play Store açılamadı", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Lütfen Play Store'u yükleyin", Toast.LENGTH_LONG).show()
         }
     }
 
+    private fun requestPermissionsSafely(permissions: Set<String>) {
+        if (!isHealthConnectAvailable) {
+            val sdkStatus = HealthConnectClient.getSdkStatus(this)
 
-    private lateinit var healthConnectClient: HealthConnectClient
-    val homeViewModel: HomeViewModel by viewModels()
+            when (sdkStatus) {
+                HealthConnectClient.SDK_AVAILABLE -> {
+                    // This shouldn't happen, but just in case
+                    Log.w("MainActivity", "SDK is available but client is null")
+                    return
+                }
 
-    private val permissionLauncher = registerForActivityResult(
-        PermissionController.createRequestPermissionResultContract()
-    ) { grantedPermissions: Set<String> ->
-        Log.d("MainActivity", "Permission result: $grantedPermissions")
-        try {
-            if (grantedPermissions.isNotEmpty()) {
-                homeViewModel.refreshPermissions()
-                Toast.makeText(this, "İzinler güncellendi", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "İzin verilmedi", Toast.LENGTH_SHORT).show()
-                homeViewModel.refreshPermissions()
+                HealthConnectClient.SDK_UNAVAILABLE -> {
+                    Toast.makeText(
+                        this,
+                        "Bu cihaz Health Connect'i desteklemiyor",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return
+                }
+
+                HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
+                    Toast.makeText(
+                        this,
+                        "Health Connect yüklü değil veya güncelleme gerekli",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    redirectToHealthConnectPlayStore()
+                    return
+                }
             }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error handling permission result", e)
+            return
         }
+
+        permissionLauncher.launch(permissions)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val healthConnectClient = HealthConnectClient.getOrCreate(this)
-        homeViewModel.setHealthClient(healthConnectClient)
+        initializeHealthConnect()
+        setupUI()
 
-        try {
-            // Health Connect Check
-            val availabilityStatus = HealthConnectClient.getSdkStatus(this)
-            Log.d("MainActivity", "Health Connect status: $availabilityStatus")
+    }
 
-            if (availabilityStatus == HealthConnectClient.SDK_UNAVAILABLE && !isHealthConnectInstalled()) {
-                Toast.makeText(this, "Health Connect yüklü değil, Play Store'a yönlendiriliyorsunuz.", Toast.LENGTH_LONG).show()
-                redirectToHealthConnectPlayStore()
-                return
-            }
-
-            this@MainActivity.healthConnectClient = HealthConnectClient.getOrCreate(this)
-
-            setContent {
-                MyFitnessOzzyTheme {
-                    val navController = rememberNavController()
-
-                    NavHost(navController = navController, startDestination = "home") {
-                        composable("home") {
-                            HomeScreen(
-                                homeViewModel = homeViewModel,
-                                onNavigateToSteps = { navController.navigate("steps") },
-                                onNavigateToCycling = { navController.navigate("cycling") },
-                                onNavigateToCalories = { navController.navigate("calories") },
-                                onRequestPermissions = { permissions ->
-                                    try {
-                                        Log.d("MainActivity", "Requesting permissions: $permissions")
-                                        permissionLauncher.launch(permissions)
-                                    } catch (e: Exception) {
-                                        Log.e("MainActivity", "Error requesting permissions", e)
-                                        Toast.makeText(this@MainActivity, "İzin isteme hatası", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            )
-                        }
-                        composable("steps") {
-                            StepsScreen(
-                                homeViewModel = homeViewModel,
-                                onBack = { navController.popBackStack() }
-                            )
-                        }
-                        composable("cycling") {
-                            CyclingScreen(
-                                homeViewModel = homeViewModel,
-                                onBack = { navController.popBackStack() },
-                                onRequestWritePermission = {
-                                    try {
-                                        val writePermissions = PermissionUtils.getCyclingPermissions()
-                                            .filter { it.contains("WRITE") }
-                                            .toSet()
-                                        if (writePermissions.isNotEmpty()) {
-                                            permissionLauncher.launch(writePermissions)
-                                        }
-                                    } catch (e: Exception) {
-                                        Log.e("MainActivity", "Error requesting cycling permissions", e)
-                                    }
-                                }
-                            )
-                        }
-                        composable("calories") {
-                            CaloriesScreen(
-                                homeViewModel = homeViewModel,
-                                onBack = { navController.popBackStack() },
-                                onRequestWritePermission = {
-                                    try {
-                                        val writePermissions = PermissionUtils.getCaloriesPermissions()
-                                            .filter { it.contains("WRITE") }
-                                            .toSet()
-                                        if (writePermissions.isNotEmpty()) {
-                                            permissionLauncher.launch(writePermissions)
-                                        }
-                                    } catch (e: Exception) {
-                                        Log.e("MainActivity", "Error requesting calories permissions", e)
-                                    }
-                                }
-                            )
-                        }
-                    }
-
-                    LaunchedEffect(Unit) {
-                        try {
-                            delay(500)
-
-                            val allPermissions = PermissionUtils.getAllPermissions()
-                            val granted = homeViewModel.getGrantedPermissions()
-                            val missing = allPermissions.filterNot { granted.contains(it) }.toSet()
-
-                            Log.d("MainActivity", "Granted permissions: $granted")
-                            Log.d("MainActivity", "Missing permissions: $missing")
-
-                            homeViewModel.refreshPermissions()
-
-                            if (missing.isNotEmpty()) {
-                                Log.d("MainActivity", "Requesting missing permissions: $missing")
-                                delay(1000)
-                                permissionLauncher.launch(missing)
+    private fun setupUI() {
+        setContent {
+            MyFitnessOzzyTheme {
+                val navController = rememberNavController()
+                NavHost(navController = navController, startDestination = "home") {
+                    composable("home") {
+                        HomeScreen(
+                            homeViewModel = homeViewModel,
+                            onNavigateToSteps = { navController.navigate("steps") },
+                            onNavigateToCycling = { navController.navigate("cycling") },
+                            onNavigateToCalories = { navController.navigate("calories") },
+                            onRequestPermissions = { permissions ->
+                                requestPermissionsSafely(permissions)
                             }
-                        } catch (e: Exception) {
-                            Log.e("MainActivity", "Error in permission check", e)
-                            Toast.makeText(this@MainActivity, "İzin kontrolü hatası: ${e.message}", Toast.LENGTH_LONG).show()
-                        }
+                        )
+                    }
+                    composable("steps") {
+                        StepsScreen(
+                            homeViewModel = homeViewModel,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable("cycling") {
+                        CyclingScreen(
+                            homeViewModel = homeViewModel,
+                            onBack = { navController.popBackStack() },
+                            onRequestWritePermission = {
+                                requestWritePermissions(PermissionUtils.getCyclingPermissions())
+                            }
+                        )
+                    }
+                    composable("calories") {
+                        CaloriesScreen(
+                            homeViewModel = homeViewModel,
+                            onBack = { navController.popBackStack() },
+                            onRequestWritePermission = {
+                                requestWritePermissions(PermissionUtils.getCaloriesPermissions())
+                            }
+                        )
                     }
                 }
             }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error in onCreate", e)
-            Toast.makeText(this, "Uygulama başlatma hatası: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun requestWritePermissions(allPermissions: Set<String>) {
+        if (isHealthConnectAvailable) {
+            val writePermissions = allPermissions.filter { it.contains("WRITE") }.toSet()
+            requestPermissionsSafely(writePermissions)
         }
     }
 
     override fun onResume() {
         super.onResume()
-        try {
+        if (isHealthConnectAvailable) {
             homeViewModel.refreshPermissions()
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error in onResume", e)
         }
     }
 }

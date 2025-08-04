@@ -11,6 +11,7 @@ import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.units.Energy
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+
 import com.ozang.myfitnessozzy.permissions.PermissionUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +32,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         return healthConnectClient?.permissionController?.getGrantedPermissions() ?: emptySet()
     }
 
-    // Permission states
+
     private val _stepPermissionGranted = MutableStateFlow(false)
     val stepPermissionGranted: StateFlow<Boolean> = _stepPermissionGranted
 

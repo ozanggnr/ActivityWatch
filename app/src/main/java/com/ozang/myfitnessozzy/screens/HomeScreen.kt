@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
+
 import com.ozang.myfitnessozzy.permissions.PermissionUtils
 import com.ozang.myfitnessozzy.viewmodel.HomeViewModel
 import androidx.core.content.edit
@@ -25,51 +26,18 @@ fun HomeScreen(
     onNavigateToCalories: () -> Unit,
     onRequestPermissions: (Set<String>) -> Unit
 ) {
+
+
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("prefs", Context.MODE_PRIVATE) }
 
-    var showInitialDialog by remember { mutableStateOf(false) }
-    var hasShownDialog by remember { mutableStateOf(prefs.getBoolean("shownHealthDialog", false)) }
-
-    val stepGranted by homeViewModel.stepPermissionGranted.collectAsState()
+        val stepGranted by homeViewModel.stepPermissionGranted.collectAsState()
     val cyclingGranted by homeViewModel.cyclingPermissionGranted.collectAsState()
     val caloriesGranted by homeViewModel.caloriesPermissionGranted.collectAsState()
 
-
-    LaunchedEffect(Unit) {
-        if (!hasShownDialog && (!stepGranted || !cyclingGranted || !caloriesGranted)) {
-            showInitialDialog = true
-        }
-    }
-
-    if (showInitialDialog) {
-        AlertDialog(
-            onDismissRequest = { showInitialDialog = false },
-            title = { Text("İzin Gerekiyor") },
-            text = {
-                Text("Uygulamanın sağlık verilerinize erişebilmesi için izin vermeniz gerekiyor. Bu sadece bir kez sorulacak.")
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    prefs.edit { putBoolean("shownHealthDialog", true) }
-                    hasShownDialog = true
-                    showInitialDialog = false
-                    onRequestPermissions(PermissionUtils.getAllPermissions())
-                }) {
-                    Text("İzin Ver")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    prefs.edit { putBoolean("shownHealthDialog", true) }
-                    hasShownDialog = true
-                    showInitialDialog = false
-                }) {
-                    Text("Hayır")
-                }
-            }
-        )
-    }
+    val hasAnyPermissions = stepGranted || cyclingGranted || caloriesGranted
+    val allPermissionsGranted = stepGranted && cyclingGranted && caloriesGranted
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -85,7 +53,7 @@ fun HomeScreen(
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+
 
         PermissionButton(
             enabled = stepGranted,
