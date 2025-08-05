@@ -23,9 +23,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaloriesScreen(
-    homeViewModel: HomeViewModel,
-    onBack: () -> Unit,
-    onRequestWritePermission: () -> Unit
+    homeViewModel: HomeViewModel, onBack: () -> Unit, onRequestWritePermission: () -> Unit
 ) {
     val caloriesData by homeViewModel.caloriesData.collectAsState()
     val isLoading by homeViewModel.isLoadingCalories.collectAsState()
@@ -45,27 +43,23 @@ fun CaloriesScreen(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        TopAppBar(
-            title = { Text("Yaktığınız Kalori") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Geri")
-                }
-            },
-            actions = {
-                if (caloriesPermissionGranted) {
-                    IconButton(onClick = {
-                        if (caloriesWritePermissionGranted) {
-                            showDialog = true
-                        } else {
-                            onRequestWritePermission()
-                        }
-                    }) {
-                        Icon(Icons.Default.Add, contentDescription = "Kalori Ekle")
+        TopAppBar(title = { Text("Yaktığınız Kalori") }, navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Geri")
+            }
+        }, actions = {
+            if (caloriesPermissionGranted) {
+                IconButton(onClick = {
+                    if (caloriesWritePermissionGranted) {
+                        showDialog = true
+                    } else {
+                        onRequestWritePermission()
                     }
+                }) {
+                    Icon(Icons.Default.Add, contentDescription = "Kalori Ekle")
                 }
             }
-        )
+        })
 
         if (!caloriesPermissionGranted) {
             Column(
@@ -122,8 +116,7 @@ fun CaloriesScreen(
 
                 if (isLoading) {
                     Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
                     }
@@ -172,10 +165,16 @@ fun CaloriesScreen(
                                             )
                                         }
 
-                                        val startTime = record.startTime.atZone(java.time.ZoneId.systemDefault())
-                                        val endTime = record.endTime.atZone(java.time.ZoneId.systemDefault())
+                                        val startTime =
+                                            record.startTime.atZone(java.time.ZoneId.systemDefault())
+                                        val endTime =
+                                            record.endTime.atZone(java.time.ZoneId.systemDefault())
                                         Text(
-                                            text = "${startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - ${endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
+                                            text = "${startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - ${
+                                                endTime.format(
+                                                    DateTimeFormatter.ofPattern("HH:mm")
+                                                )
+                                            }",
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 12.sp
                                         )
@@ -191,48 +190,39 @@ fun CaloriesScreen(
 
     // Kalori ekleme
     if (showDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showDialog = false
-                inputCalories = ""
-            },
-            title = { Text("Kalori Ekle") },
-            text = {
-                Column {
-                    Text("Kaç kalori yaktınız?")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = inputCalories,
-                        onValueChange = { inputCalories = it },
-                        label = { Text("Kalori (kcal)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val calories = inputCalories.toDoubleOrNull()
-                        if (calories != null && calories > 0) {
-                            homeViewModel.addCaloriesBurned(calories)
-                            showDialog = false
-                            inputCalories = ""
-                        }
-                    },
-                    enabled = inputCalories.toDoubleOrNull()?.let { it > 0 } == true
-                ) {
-                    Text("Ekle")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
+        AlertDialog(onDismissRequest = {
+            showDialog = false
+            inputCalories = ""
+        }, title = { Text("Kalori Ekle") }, text = {
+            Column {
+                Text("Kaç kalori yaktınız?")
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = inputCalories,
+                    onValueChange = { inputCalories = it },
+                    label = { Text("Kalori (kcal)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+            }
+        }, confirmButton = {
+            TextButton(onClick = {
+                val calories = inputCalories.toDoubleOrNull()
+                if (calories != null && calories > 0) {
+                    homeViewModel.addCaloriesBurned(calories)
                     showDialog = false
                     inputCalories = ""
-                }) {
-                    Text("İptal")
                 }
+            }, enabled = inputCalories.toDoubleOrNull()?.let { it > 0 } == true) {
+                Text("Ekle")
             }
-        )
+        }, dismissButton = {
+            TextButton(onClick = {
+                showDialog = false
+                inputCalories = ""
+            }) {
+                Text("İptal")
+            }
+        })
     }
 }

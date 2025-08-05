@@ -2,11 +2,13 @@ package com.ozang.myfitnessozzy.viewmodel
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.units.Energy
@@ -23,10 +25,13 @@ import java.time.temporal.ChronoUnit
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
+
     private var healthConnectClient: HealthConnectClient? = null
 
     fun setHealthClient(client: HealthConnectClient) {
         this.healthConnectClient = client
+        refreshPermissions()
+        refreshCycling()
     }
 
     private val _stepPermissionGranted = MutableStateFlow(false)
@@ -44,6 +49,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _caloriesWritePermissionGranted = MutableStateFlow(false)
     val caloriesWritePermissionGranted: StateFlow<Boolean> = _caloriesWritePermissionGranted
 
+    private val _todayCyclingMinutes = MutableStateFlow(0L)
+    val todayCyclingMinutes: StateFlow<Long> = _todayCyclingMinutes
+
+    private val _last28DaysCyclingMinutes = MutableStateFlow(0L)
+    val last28DaysCyclingMinutes: StateFlow<Long> = _last28DaysCyclingMinutes
+
+    private val _last90DaysCyclingMinutes = MutableStateFlow(0L)
+    val last90DaysCyclingMinutes: StateFlow<Long> = _last90DaysCyclingMinutes
 
     private val _stepsData = MutableStateFlow<List<StepsRecord>>(emptyList())
     val stepsData: StateFlow<List<StepsRecord>> = _stepsData
@@ -65,8 +78,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             _isLoading.value = true
-
-            delay(100)
 
             val grantedPermissions = client.permissionController.getGrantedPermissions()
 
@@ -90,9 +101,54 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun loadStepsData() {
-        if (!_stepPermissionGranted.value) return
+    fun refreshCycling() {
         val client = healthConnectClient ?: return
+
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                val now = Instant.now()
+                val startOfToday = now.truncatedTo(ChronoUnit.DAYS)
+
+                _todayCyclingMinutes.value = readCyclingDurationInRange(client, startOfToday, now)
+                _last28DaysCyclingMinutes.value = readCyclingDurationInRange(client, now.minus(28, ChronoUnit.DAYS), now)
+                _last90DaysCyclingMinutes.value = readCyclingDurationInRange(client, now.minus(90, ChronoUnit.DAYS), now)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    private suspend fun readCyclingDurationInRange(
+        client: HealthConnectClient,
+        start: Instant,
+        end: Instant
+    ): Long {
+        return try {
+            val response = client.readRecords(
+                ReadRecordsRequest(
+                    recordType = ExerciseSessionRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(start, end)
+                )
+            )
+            response.records
+                .filter { it.exerciseType == ExerciseSessionRecord.EXERCISE_TYPE_BIKING }
+                .sumOf {
+                    val durationSeconds = it.endTime.epochSecond - it.startTime.epochSecond
+                    durationSeconds / 60
+                }
+        } catch (e: Exception) {
+            Log.d("BikingData", "error $e")
+            e.printStackTrace()
+            0L
+        }
+    }
+
+    fun loadStepsData() {
+        val client = healthConnectClient ?: return
+        if (!_stepPermissionGranted.value) return
 
         viewModelScope.launch {
             _isLoadingSteps.value = true
@@ -112,8 +168,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadCaloriesData() {
-        if (!_caloriesPermissionGranted.value) return
         val client = healthConnectClient ?: return
+        if (!_caloriesPermissionGranted.value) return
 
         viewModelScope.launch {
             _isLoadingCalories.value = true
@@ -134,16 +190,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     @SuppressLint("RestrictedApi")
     fun addCyclingSession(durationMinutes: Long) {
-        if (!_cyclingWritePermissionGranted.value) return
         val client = healthConnectClient ?: return
+        if (!_cyclingWritePermissionGranted.value) return
 
         viewModelScope.launch {
             val now = Instant.now()
             val startTime = now.minus(durationMinutes, ChronoUnit.MINUTES)
-
             val zoneOffset = ZoneId.systemDefault().rules.getOffset(now)
 
             val session = ExerciseSessionRecord(
+                metadata = Metadata.manualEntry(),
                 startTime = startTime,
                 startZoneOffset = zoneOffset,
                 endTime = now,
@@ -157,13 +213,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addCaloriesBurned(calories: Double) {
-        if (!_caloriesWritePermissionGranted.value) return
         val client = healthConnectClient ?: return
+        if (!_caloriesWritePermissionGranted.value) return
 
         viewModelScope.launch {
             val now = Instant.now()
             val startTime = now.minus(1, ChronoUnit.HOURS)
-
             val zoneOffset = ZoneId.systemDefault().rules.getOffset(now)
 
             val record = TotalCaloriesBurnedRecord(
@@ -171,7 +226,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 startZoneOffset = zoneOffset,
                 endTime = now,
                 endZoneOffset = zoneOffset,
-                energy = Energy.kilocalories(calories)
+                energy = Energy.kilocalories(calories),
+                metadata = Metadata.manualEntry()
             )
 
             client.insertRecords(listOf(record))

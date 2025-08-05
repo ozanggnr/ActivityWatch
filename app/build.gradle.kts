@@ -42,7 +42,8 @@ android {
 
 dependencies {
 
-    implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
+    implementation("androidx.health.connect:connect-client:1.1.0-rc03")
+
     implementation(libs.androidx.material.icons.extended.v140)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)

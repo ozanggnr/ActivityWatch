@@ -3,6 +3,7 @@ package com.ozang.myfitnessozzy.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,94 +13,72 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ozang.myfitnessozzy.viewmodel.CyclingViewModel
 import com.ozang.myfitnessozzy.viewmodel.HomeViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CyclingScreen(
-    cyclingViewModel: CyclingViewModel = viewModel(),
     homeViewModel: HomeViewModel,
     onBack: () -> Unit,
     onRequestWritePermission: () -> Unit
 ) {
-    val todayCycling by cyclingViewModel.todayCyclingMinutes.collectAsState()
-    val last28DaysCycling by cyclingViewModel.last28DaysCyclingMinutes.collectAsState()
-    val last90DaysCycling by cyclingViewModel.last90DaysCyclingMinutes.collectAsState()
-    val isLoading by cyclingViewModel.isLoading.collectAsState()
+    val todayCycling by homeViewModel.todayCyclingMinutes.collectAsState()
+    val last28DaysCycling by homeViewModel.last28DaysCyclingMinutes.collectAsState()
+    val last90DaysCycling by homeViewModel.last90DaysCyclingMinutes.collectAsState()
+    val isLoading by homeViewModel.isLoading.collectAsState()
     val writePermissionGranted by homeViewModel.cyclingWritePermissionGranted.collectAsState()
-    val homeLoading by homeViewModel.isLoading.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
     var inputMinutes by remember { mutableStateOf("") }
 
-
     LaunchedEffect(Unit) {
-        cyclingViewModel.refreshCycling()
+        homeViewModel.refreshCycling()
         homeViewModel.refreshPermissions()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Geri")
-            }
-            Text(
-                text = "Bisiklet Verileri",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            CyclingDataCard("Bugün Bisiklet Sürme Süresi", "$todayCycling dk")
-            CyclingDataCard("Son 28 Günde Toplam", "$last28DaysCycling dk")
-            CyclingDataCard("Son 90 Günde Toplam", "$last90DaysCycling dk")
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Veri girme (ÇALIŞMIYO BU)
-        Button(
-            onClick = {
-                if (writePermissionGranted) {
-                    showDialog = true
-                } else {
-                    onRequestWritePermission()
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("Bisiklet Verileri") },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Geri")
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !homeLoading
+            actions = {
+                IconButton(onClick = {
+                    if (writePermissionGranted) {
+                        showDialog = true
+                    } else {
+                        onRequestWritePermission()
+                    }
+                }) {
+                    Icon(Icons.Default.Add, contentDescription = "Veri Ekle")
+                }
+            }
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (homeLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp))
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             } else {
-                Text("+ Veri Ekle")
+                CyclingDataCard("Bugün Bisiklet Sürme Süresi", "$todayCycling dk")
+                CyclingDataCard("Son 28 Günde Toplam", "$last28DaysCycling dk")
+                CyclingDataCard("Son 90 Günde Toplam", "$last90DaysCycling dk")
             }
         }
     }
 
-
+    // AlertDialog (Aynı kalıyor)
     if (showDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -128,8 +107,7 @@ fun CyclingScreen(
                             homeViewModel.addCyclingSession(minutes)
                             showDialog = false
                             inputMinutes = ""
-
-                            cyclingViewModel.refreshCycling()
+                            homeViewModel.refreshCycling()
                         }
                     },
                     enabled = inputMinutes.toLongOrNull()?.let { it > 0 } == true
@@ -148,6 +126,7 @@ fun CyclingScreen(
         )
     }
 }
+
 
 @Composable
 fun CyclingDataCard(title: String, value: String) {

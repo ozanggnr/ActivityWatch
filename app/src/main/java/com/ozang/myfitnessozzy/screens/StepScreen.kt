@@ -18,8 +18,7 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StepsScreen(
-    homeViewModel: HomeViewModel,
-    onBack: () -> Unit
+    homeViewModel: HomeViewModel, onBack: () -> Unit
 ) {
     val stepsData by homeViewModel.stepsData.collectAsState()
     val isLoading by homeViewModel.isLoadingSteps.collectAsState()
@@ -32,14 +31,11 @@ fun StepsScreen(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        TopAppBar(
-            title = { Text("Adımlar") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Geri")
-                }
+        TopAppBar(title = { Text("Adımlar") }, navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Geri")
             }
-        )
+        })
 
         Column(
             modifier = Modifier
@@ -77,8 +73,7 @@ fun StepsScreen(
 
             if (isLoading) {
                 Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
@@ -127,10 +122,16 @@ fun StepsScreen(
                                         )
                                     }
 
-                                    val startTime = record.startTime.atZone(java.time.ZoneId.systemDefault())
-                                    val endTime = record.endTime.atZone(java.time.ZoneId.systemDefault())
+                                    val startTime =
+                                        record.startTime.atZone(java.time.ZoneId.systemDefault())
+                                    val endTime =
+                                        record.endTime.atZone(java.time.ZoneId.systemDefault())
                                     Text(
-                                        text = "${startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - ${endTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
+                                        text = "${startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - ${
+                                            endTime.format(
+                                                DateTimeFormatter.ofPattern("HH:mm")
+                                            )
+                                        }",
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 12.sp
                                     )
