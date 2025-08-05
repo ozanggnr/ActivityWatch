@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
     private var isHealthConnectAvailable = false
     val homeViewModel: HomeViewModel by viewModels()
 
-    // Health Connect durumu için state
+
     private var showHealthConnectDialog by mutableStateOf(false)
 
     private val permissionLauncher = registerForActivityResult(
@@ -86,7 +86,6 @@ class MainActivity : ComponentActivity() {
             MyFitnessOzzyTheme {
                 val navController = rememberNavController()
 
-                // Health Connect Dialog
                 if (showHealthConnectDialog) {
                     HealthConnectDialog(
                         onConfirm = {

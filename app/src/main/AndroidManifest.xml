@@ -24,7 +24,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Health Connect intent filters -->
         <activity-alias
             android:name="ViewPermissionUsageActivity"
             android:exported="true"
@@ -33,6 +32,10 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS"/>
             </intent-filter>
         </activity-alias>
     </application>
